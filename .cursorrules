@@ -1,0 +1,37 @@
+Project Context: Finviz-Style Stock Market Heatmap
+
+Project Overview
+
+The goal is to build a stock market heatmap dashboard (similar to Finviz) for the S&P 500. The architecture consists of a dual Spring Boot microservice backend, Python scripts for initial data ingestion, and a standard HTML/CSS/JS frontend.
+System Architecture
+
+1. project-data-provider (Spring Boot App)
+Purpose: Handles scheduled, live data ingestion.
+Responsibilities: Fetches daily real-time/live stock data from the Finnhub.io API for all 500 S&P 500 companies.
+Constraint: Must implement rate-limiting/throttling (e.g., delaying requests to respect Finnhub's free tier limit of 60 requests per minute).
+
+2. project-stock-data (Spring Boot App)
+Purpose: Core data management, persistence, and API gateway for the frontend.
+Responsibilities: Exposes REST API endpoints to serve data to the frontend and acts as the interface for the database.
+Data Models (JPA Entities):
+StockEntity: Represents the company (e.g., Ticker symbol, Company Name).
+StockOHLCEntity: Stores historical market data (Open, High, Low, Close) with a @ManyToOne relationship to StockEntity.
+StockProfileEntity: Stores company background (Sector, Industry, etc.) via Finnhub with a @OneToOne relationship to StockEntity.
+
+3. Frontend Layer
+Technologies: HTML, CSS, and Vanilla JavaScript.
+Core Feature: Renders an interactive Treemap visualization.
+Execution Strategy: The frontend will fetch structured JSON from project-stock-data REST endpoints. JavaScript (potentially using libraries like D3.js or Highcharts) will parse the data and paint the heatmap canvas.
+
+Data Pipeline & Seeding Strategy
+The database seeding process uses Python Jupyter notebooks under `python/`:
+- Ticker Seeding (`_1_load_snp500_symbol.ipynb`): Reads the S&P 500 constituents from a GitHub CSV dataset and populates StockEntity.
+
+- Historical Data Seeding (`_2_load_ohlc_data.ipynb`): Uses the yfinance library to loop through the 500 symbols, downloads historical daily OHLC data, and populates StockOHLCEntity.
+
+- Company Profile Seeding (`_3_load_stock_profile.ipynb`): Calls the Finnhub Company Profile 2 API (rate-limited, with checkpoint resume) to fetch industry, market cap, logo, and company name data, then populates StockProfileEntity.
+
+Instructions for Cursor
+Language Priority: When generating backend code, controllers, or database migrations, use Java 17+ and Spring Boot 3.x.
+Scripts: When generating web scraping or initial data parsing tasks, use Python 3.
+Frontend: Keep the frontend code isolated to standard HTML, CSS, and JavaScript. Avoid heavy frameworks (like React or Angular) unless explicitly asked. Focus on formatting backend API payloads as clean JSON that a generic JavaScript charts library can easily digest.

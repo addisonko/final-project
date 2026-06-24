@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Stock Chart</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+
+<body class="chart-page">
+  <header class="chart-page__header">
+    <div class="chart-page__title-block">
+      <div class="chart-page__logo-wrap" id="chart-logo-wrap" hidden>
+        <img class="chart-page__logo" id="chart-logo" alt="" />
+      </div>
+      <div class="chart-page__text">
+        <h1 class="chart-page__symbol" id="chart-symbol">Loading…</h1>
+        <p class="chart-page__company" id="chart-subtitle"></p>
+      </div>
+    </div>
+  </header>
+
+  <main class="chart-page__main">
+    <div id="chart-status" class="chart-page__status">Loading chart…</div>
+    <div id="chart-container" class="chart-page__container"></div>
+  </main>
+  <script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
+  <script type="module" src="js/chart-page.js"></script>
+</body>
+
+</html>
