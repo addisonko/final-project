@@ -17,10 +17,12 @@ export const ENDPOINTS = {
       .join(",")}`,
   stockProfile: (symbol) =>
     `${API.stockDataBase}/api/stocks/${encodeURIComponent(symbol)}/profile`,
+  stockNews: (symbol) =>
+    `${API.stockDataBase}/api/stocks/${encodeURIComponent(symbol)}/news`,
 };
 
-/** How often to refresh UI from Redis-cached quotes (15 minutes). */
-export const REFRESH_INTERVAL_MS = 15 * 60 * 1000;
+/** How often to refresh UI from Redis-cached quotes (2 mins). */
+export const REFRESH_INTERVAL_MS = 60 * 1000;
 
 /** Years of OHLC history shown in the hover tooltip sparkline. */
 export const TOOLTIP_SPARKLINE_YEARS = 1;

@@ -1,12 +1,14 @@
 package com.bc.project_data_provider.service;
 
 import java.time.Duration;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.slf4j.LoggerFactory;
@@ -15,11 +17,13 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
+import com.bc.project_data_provider.dto.CompanyNewsDTO;
 import com.bc.project_data_provider.dto.LastRefreshDTO;
 import com.bc.project_data_provider.dto.LiveQuoteDTO;
 import com.bc.project_data_provider.dto.StockSymbolResp;
 import com.bc.project_data_provider.lib.RedisHelper;
 import com.bc.project_data_provider.mapper.DtoMapper;
+import com.bc.project_data_provider.model.CompanyNewsDto;
 import com.bc.project_data_provider.model.FinnhubDto;
 
 @Service
@@ -30,6 +34,8 @@ public class LiveDataService {
   private DtoMapper dtoMapper;
   @Autowired
   private RedisHelper redisHelper;
+  @Autowired
+  private AsyncOhlcPersistenceService asyncOhlcPersistenceService;
 
   @Value("${finnhub.api.base-url}")
   private String domain;
@@ -37,15 +43,18 @@ public class LiveDataService {
   @Value("${finnhub.api.quote-path}")
   private String quotePath;
 
+  @Value("${finnhub.api.news-path}")
+  private String newsPath;
+
   @Value("${finnhub.api.token}")
   private String apiToken;
 
-  @Value("${live.quote.timezone:Asia/Hong_Kong}")
+  @Value("${live.quote.timezone:America/New_York}")
   private String schedulerTimezone;
-  @Value("${live.quote.window-start:21:30}")
-  private String windowStart; // 9:30 PM
-  @Value("${live.quote.window-end:04:00}")
-  private String windowEnd; // 4:00 AM
+  @Value("${live.quote.window-start:00:01}")
+  private String windowStart; // 9:30 AM
+  @Value("${live.quote.window-end:23:59}")
+  private String windowEnd; // 4:00 PM
 
   private final String stockAppURL = "http://localhost:8080/api/stocks/symbols";
   private final Object finnhubRateLimitLock = new Object();
@@ -54,6 +63,7 @@ public class LiveDataService {
       LoggerFactory.getLogger(LiveDataService.class);
   private final AtomicBoolean refreshInProgress = new AtomicBoolean(false);
   private static final String LAST_REFRESH_KEY = "quotes:lastRefreshedAt";
+
 
   public void runRefreshLoopUntilWindowEnd() {
     ZoneId zone = ZoneId.of(schedulerTimezone);
@@ -68,7 +78,15 @@ public class LiveDataService {
         log.info("Nightly window closed — stopping after {} passes", pass);
         break;
       }
-      log.info("Pass #{} complete — starting next pass immediately", pass);
+      log.info("Pass #{} complete — waiting 6 hours before next pass", pass);
+      try {
+        Thread.sleep(Duration.ofHours(6));
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        log.info("Pass interval interrupted — stopping loop after pass #{}",
+            pass);
+        break;
+      }
     }
   }
 
@@ -109,6 +127,7 @@ public class LiveDataService {
         return false;
       }
       redisHelper.set(symbolKey(symbol), quote, Duration.ofHours(12));
+      this.asyncOhlcPersistenceService.persistDailyOhlcAsync(symbol, quote);
       return true;
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
@@ -155,24 +174,67 @@ public class LiveDataService {
   }
 
   public LastRefreshDTO getLastRefreshTime() {
-    LocalDateTime lastRefreshTime = 
-    redisHelper.get(LAST_REFRESH_KEY, LocalDateTime.class);
-    return LastRefreshDTO.builder() // 
-    .lastRefreshTime(lastRefreshTime) // 
-    .build();
+    LocalDateTime lastRefreshTime =
+        redisHelper.get(LAST_REFRESH_KEY, LocalDateTime.class);
+    return LastRefreshDTO.builder() //
+        .lastRefreshTime(lastRefreshTime) //
+        .build();
+  }
+
+  public List<CompanyNewsDTO> fetchCompanyNews(String symbol) {
+    ZoneId zone = ZoneId.of(schedulerTimezone);
+    String from = LocalDate.now(zone).minusDays(7).toString();
+    String to = LocalDate.now(zone).toString();
+
+    String url = UriComponentsBuilder.newInstance() //
+        .scheme("https") //
+        .host(this.domain) //
+        .path(this.newsPath) //
+        .queryParam("symbol", symbol) //
+        .queryParam("from", from) //
+        .queryParam("to", to).queryParam("token", this.apiToken) //
+        .build() //
+        .toString();
+
+    synchronized (this.finnhubRateLimitLock) {
+      try {
+        CompanyNewsDto[] articles =
+            this.restTemplate.getForObject(url, CompanyNewsDto[].class);
+
+        if (articles == null || articles.length == 0) {
+          return Collections.emptyList();
+        }
+
+        return Arrays.stream(articles) //
+            .sorted(Comparator.comparing(CompanyNewsDto::getDatetime, //
+                Comparator.nullsLast(Comparator.reverseOrder()))) //
+            .map(e -> this.dtoMapper.map(e)).toList();
+      } catch (Exception e) {
+        log.warn("Failed to fetch news for " + symbol + ": " + e.getMessage());
+        return Collections.emptyList();
+      } finally {
+        try {
+          Thread.sleep(finnhubMinIntervalMS);
+        } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
+        }
+      }
+    }
   }
 
 
-  // Private methods
 
+  // ! Private methods
   private FinnhubDto fetchFromFinnhub(String symbol)
       throws InterruptedException {
-    String url = UriComponentsBuilder.newInstance().scheme("https") //
+    String url = UriComponentsBuilder.newInstance() //
+        .scheme("https") //
         .host(this.domain) //
         .path(this.quotePath) //
         .queryParam("symbol", symbol) //
         .queryParam("token", this.apiToken) //
-        .build().toString();
+        .build() //
+        .toString();
 
     synchronized (this.finnhubRateLimitLock) {
       try {
@@ -201,10 +263,9 @@ public class LiveDataService {
 
   private boolean isInNightlyWindow(ZoneId zone) {
     LocalTime now = LocalTime.now(zone);
-    LocalTime start = LocalTime.parse(windowStart); // "21:30"
-    LocalTime end = LocalTime.parse(windowEnd); // "04:00"
-    // Evening: 21:30–23:59 OR Early morning: 00:00–03:59
-    return !now.isBefore(start) || now.isBefore(end);
+    LocalTime start = LocalTime.parse(windowStart); // "09:30"
+    LocalTime end = LocalTime.parse(windowEnd); // "16:00"
+    return !now.isBefore(start) && now.isBefore(end);
   }
 
 }

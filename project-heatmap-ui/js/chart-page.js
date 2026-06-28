@@ -1,8 +1,30 @@
-import { fetchHistoricalOhlc, fetchStockProfile } from "./api.js";
+import {
+  fetchCompanyNews,
+  fetchHistoricalOhlc,
+  fetchStockProfile,
+  fetchQuotesForSymbols,
+} from "./api.js";
+import { REFRESH_INTERVAL_MS } from "./config.js";
+import { formatPrice, formatPercentChange } from "./grouping.js";
 
 let chart;
 let candleSeries;
 let resizeObserver;
+
+const RANGE_OPTIONS = {
+  "1M": { backendYears: 1, months: 1 },
+  "3M": { backendYears: 1, months: 3 },
+  "6M": { backendYears: 1, months: 6 },
+  "1Y": { backendYears: 1 },
+  "5Y": { backendYears: 5 },
+  "10Y": { backendYears: 10 },
+};
+
+const DEFAULT_RANGE = "1Y";
+
+let activeSymbol = "";
+let activeRange = DEFAULT_RANGE;
+const ohlcCache = new Map();
 
 function getQueryParams() {
   const params = new URLSearchParams(window.location.search);
@@ -20,6 +42,64 @@ function mapCandles(rows) {
     low: Number(row.low),
     close: Number(row.close),
   }));
+}
+
+function filterRowsByMonths(rows, months) {
+  if (!months) return rows;
+  const cutoff = new Date();
+  cutoff.setMonth(cutoff.getMonth() - months);
+
+  return rows.filter((row) => {
+    const tradeDate = new Date(row.tradeDate);
+    return tradeDate >= cutoff;
+  });
+}
+
+function getRowsForRange(rows, rangeKey) {
+  const option = RANGE_OPTIONS[rangeKey];
+  if (!option) return rows;
+  if (!option.months) return rows;
+  return filterRowsByMonths(rows, option.months);
+}
+
+async function getOhlcRows(symbol, rangeKey) {
+  const option = RANGE_OPTIONS[rangeKey];
+  const cacheKey = `${symbol}:${option.backendYears}`;
+
+  if (!ohlcCache.has(cacheKey)) {
+    ohlcCache.set(cacheKey, fetchHistoricalOhlc(symbol, option.backendYears));
+  }
+
+  const rows = await ohlcCache.get(cacheKey);
+  return getRowsForRange(rows, rangeKey);
+}
+
+function setActiveRangeButton(rangeKey) {
+  document.querySelectorAll(".chart-page__range-btn").forEach((button) => {
+    button.classList.toggle("is-active", button.dataset.range === rangeKey);
+  });
+}
+
+async function loadRange(rangeKey, statusEl, containerEl) {
+  if (!activeSymbol || !chart || !candleSeries) return;
+
+  const rows = await getOhlcRows(activeSymbol, rangeKey);
+
+  if (!rows.length) {
+    setStatus(
+      statusEl,
+      containerEl,
+      `No historical data available for ${activeSymbol}.`,
+    );
+    return;
+  }
+
+  showChart(statusEl, containerEl);
+  candleSeries.setData(mapCandles(rows));
+  chart.timeScale().fitContent();
+
+  activeRange = rangeKey;
+  setActiveRangeButton(rangeKey);
 }
 
 function createCandlestickChart(container) {
@@ -98,6 +178,163 @@ function renderLogo(logoWrap, logoImg, symbol, profile) {
   logoWrap.hidden = false;
 }
 
+let quoteTimerId = null;
+
+function updateLiveQuote(quoteEl, priceEl, changeEl, quote) {
+  if (!quote?.currentPrice) {
+    quoteEl.hidden = true;
+    return;
+  }
+
+  const pct = Number(quote.percentChange) || 0;
+  priceEl.textContent = formatPrice(quote.currentPrice);
+  changeEl.textContent = formatPercentChange(pct);
+
+  changeEl.className = "chart-page__change";
+  if (pct > 0) changeEl.classList.add("chart-page__change--up");
+  else if (pct < 0) changeEl.classList.add("chart-page__change--down");
+  else changeEl.classList.add("chart-page__change--neutral");
+
+  quoteEl.hidden = false;
+}
+
+async function refreshLiveQuote(symbol, quoteEl, priceEl, changeEl) {
+  const quotes = await fetchQuotesForSymbols([symbol]);
+  updateLiveQuote(quoteEl, priceEl, changeEl, quotes[0]);
+}
+
+function startLiveQuoteRefresh(symbol, quoteEl, priceEl, changeEl) {
+  if (quoteTimerId) clearInterval(quoteTimerId);
+  const tick = () =>
+    refreshLiveQuote(symbol, quoteEl, priceEl, changeEl).catch(() => {});
+  tick(); // immediate fetch on load
+  quoteTimerId = setInterval(tick, REFRESH_INTERVAL_MS);
+  window.addEventListener("beforeunload", () => clearInterval(quoteTimerId));
+}
+
+function bindRangeControls(statusEl, containerEl) {
+  document.querySelectorAll(".chart-page__range-btn").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const rangeKey = button.dataset.range;
+      if (!rangeKey || rangeKey === activeRange) return;
+
+      try {
+        await loadRange(rangeKey, statusEl, containerEl);
+      } catch (error) {
+        console.error(error);
+        setStatus(statusEl, containerEl, "Failed to update chart range.");
+      }
+    });
+  });
+}
+
+function formatNewsDate(unixSeconds) {
+  if (!unixSeconds) return "";
+  return new Date(unixSeconds * 1000).toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+function createNewsPlaceholder(message) {
+  const el = document.createElement("p");
+  el.className = "chart-page__news-placeholder";
+  el.textContent = message;
+  return el;
+}
+
+function renderNewsCard(article) {
+  const card = document.createElement("article");
+  card.className = "news-card";
+
+  if (article.image?.trim()) {
+    const img = document.createElement("img");
+    img.className = "news-card__thumb";
+    img.src = article.image;
+    img.alt = "";
+    img.loading = "lazy";
+    img.onerror = () => img.remove();
+    card.appendChild(img);
+  }
+
+  const body = document.createElement("div");
+  body.className = "news-card__body";
+
+  if (article.url?.trim()) {
+    const headline = document.createElement("a");
+    headline.className = "news-card__headline";
+    headline.href = article.url;
+    headline.target = "_blank";
+    headline.rel = "noopener noreferrer";
+    headline.textContent = article.headline || "Read article";
+    body.appendChild(headline);
+  } else if (article.headline) {
+    const headline = document.createElement("span");
+    headline.className = "news-card__headline";
+    headline.textContent = article.headline;
+    body.appendChild(headline);
+  }
+
+  const meta = document.createElement("div");
+  meta.className = "news-card__meta";
+  const parts = [];
+  if (article.source) parts.push(article.source);
+  const dateStr = formatNewsDate(article.datetime);
+  if (dateStr) parts.push(dateStr);
+  meta.textContent = parts.join(" · ");
+  if (parts.length) body.appendChild(meta);
+
+  if (article.summary) {
+    const summary = document.createElement("p");
+    summary.className = "news-card__summary";
+    summary.textContent = article.summary;
+    body.appendChild(summary);
+  }
+
+  card.appendChild(body);
+  return card;
+}
+
+async function loadCompanyNews(symbol) {
+  const container = document.getElementById("news-feed-container");
+  if (!container) return;
+
+  container.replaceChildren();
+  container.appendChild(createNewsPlaceholder("Loading news…"));
+
+  try {
+    const articles = await fetchCompanyNews(symbol);
+    container.replaceChildren();
+
+    if (!articles?.length) {
+      container.appendChild(
+        createNewsPlaceholder("No recent news for this symbol."),
+      );
+      return;
+    }
+
+    const fragment = document.createDocumentFragment();
+    for (const article of articles) {
+      fragment.appendChild(renderNewsCard(article));
+    }
+    container.appendChild(fragment);
+  } catch (error) {
+    console.error(error);
+    container.replaceChildren();
+    container.appendChild(createNewsPlaceholder("Failed to load news."));
+  }
+}
+
+async function setActiveSymbol(symbol, { statusEl, containerEl, quoteEl, priceEl, changeEl }) {
+  activeSymbol = symbol;
+  startLiveQuoteRefresh(symbol, quoteEl, priceEl, changeEl);
+  loadCompanyNews(symbol);
+  await loadRange(activeRange, statusEl, containerEl);
+}
+
 async function initChartPage() {
   const symbolEl = document.getElementById("chart-symbol");
   const subtitleEl = document.getElementById("chart-subtitle");
@@ -105,6 +342,9 @@ async function initChartPage() {
   const containerEl = document.getElementById("chart-container");
   const logoWrap = document.getElementById("chart-logo-wrap");
   const logoImg = document.getElementById("chart-logo");
+  const quoteEl = document.getElementById("chart-quote");
+  const priceEl = document.getElementById("chart-price");
+  const changeEl = document.getElementById("chart-change");
 
   const { symbol, name } = getQueryParams();
   if (!symbol) {
@@ -115,31 +355,30 @@ async function initChartPage() {
   document.title = `${symbol} Chart`;
   symbolEl.textContent = symbol;
   subtitleEl.textContent = name;
-  setStatus(statusEl, containerEl, "Loading 10 years of historical OHLC data…");
+  setStatus(statusEl, containerEl, "Loading historical OHLC data…");
 
   try {
-    const [rows, profile] = await Promise.all([
-      fetchHistoricalOhlc(symbol, 10),
-      fetchStockProfile(symbol).catch(() => null),
-    ]);
+    const profile = await fetchStockProfile(symbol).catch(() => null);
 
     if (!name && profile?.companyName) {
       subtitleEl.textContent = profile.companyName;
     }
     renderLogo(logoWrap, logoImg, symbol, profile);
 
-    if (!rows.length) {
-      setStatus(statusEl, containerEl, // 
-        `No historical data available for ${symbol}.`); //
-      return;
-    }
-
     showChart(statusEl, containerEl);
     const { chartInstance, series } = createCandlestickChart(containerEl);
     chart = chartInstance;
     candleSeries = series;
-    candleSeries.setData(mapCandles(rows));
-    chart.timeScale().fitContent();
+
+    bindRangeControls(statusEl, containerEl);
+    await setActiveSymbol(symbol, {
+      statusEl,
+      containerEl,
+      quoteEl,
+      priceEl,
+      changeEl,
+    });
+
     observeChartResize(containerEl, chart);
   } catch (error) {
     console.error(error);

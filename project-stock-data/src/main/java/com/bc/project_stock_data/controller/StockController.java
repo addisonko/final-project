@@ -4,11 +4,15 @@ import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import com.bc.project_stock_data.dto.CompanyNewsDTO;
 import com.bc.project_stock_data.dto.StockOHLCDTO;
 import com.bc.project_stock_data.dto.StockProfileDTO;
+import com.bc.project_stock_data.dto.UpsertDailyOhlcReq;
 import com.bc.project_stock_data.entity.StockEntity;
 import com.bc.project_stock_data.service.StockService;
 
@@ -37,5 +41,16 @@ public class StockController {
   @GetMapping("/{symbol}/profile")
   public StockProfileDTO getProfile(@PathVariable String symbol) {
     return stockService.getProfileBySymbol(symbol);
+  }
+
+  @PutMapping("/{symbol}/ohlc/daily")
+  public void upsertDailyOhlc(@PathVariable String symbol,
+      @RequestBody UpsertDailyOhlcReq request) {
+    stockService.upsertDailyOhlc(symbol, request);
+  }
+
+  @GetMapping("/{symbol}/news")
+  public List<CompanyNewsDTO> getCompanyNews(@PathVariable String symbol) {
+    return this.stockService.getCompanyNews(symbol);
   }
 }

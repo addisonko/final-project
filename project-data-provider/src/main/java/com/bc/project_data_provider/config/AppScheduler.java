@@ -18,7 +18,7 @@ public class AppScheduler {
   private static final Logger log = LoggerFactory.getLogger(AppScheduler.class);
   private final AtomicBoolean nightlyLoopRunning = new AtomicBoolean(false);
 
-  @Scheduled(cron = "0 30 21 * * MON-FRI",
+  @Scheduled(cron = "0 30 09 * * MON-FRI",
       zone = "${live.quote.timezone:America/New_York}")
   public void scheduledRefresh() {
     this.startLoopIfNotRunning("cron trigger");

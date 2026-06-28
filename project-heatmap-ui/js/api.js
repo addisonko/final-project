@@ -20,6 +20,10 @@ export function fetchStockProfile(symbol) {
   return fetchJson(ENDPOINTS.stockProfile(symbol));
 }
 
+export function fetchCompanyNews(symbol) {
+  return fetchJson(ENDPOINTS.stockNews(symbol));
+}
+
 /** Single request — reads all quotes from Redis cache via backend. */
 export function fetchAllQuotes() {
   return fetchJson(ENDPOINTS.quotesAll);

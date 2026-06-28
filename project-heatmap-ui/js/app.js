@@ -23,6 +23,7 @@ let stockBySymbol = new Map();
 let blockRegistry = new Map();
 let refreshTimerId = null;
 let isRefreshing = false;
+const EARLY_REFRESH_MS = 30 * 1000;
 
 function openStockChartPage(stock) {
   hideStockTooltip();
@@ -77,6 +78,8 @@ function startQuoteRefresh() {
   if (refreshTimerId) clearInterval(refreshTimerId);
   refreshTimerId = setInterval(refreshQuotes, REFRESH_INTERVAL_MS);
   window.addEventListener("beforeunload", () => clearInterval(refreshTimerId));
+
+  setTimeout(refreshQuotes, EARLY_REFRESH_MS);
 }
 
 function observeHeatmapResize(container) {

@@ -10,6 +10,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -17,11 +18,16 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
-@Table(name = "stock_ohlc_data")
+@Table(
+  name = "stock_ohlc_data", 
+  uniqueConstraints = @UniqueConstraint(
+    name = "us_stock_ohlc_stock_id_trade_date",
+    columnNames = {"stock_id", "trade_date"}))
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
 @Getter
+@Setter
 public class StockOHLCEntity {
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
