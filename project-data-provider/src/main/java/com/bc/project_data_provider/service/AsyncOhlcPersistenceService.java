@@ -19,7 +19,7 @@ public class AsyncOhlcPersistenceService {
   private static final org.slf4j.Logger log =
       LoggerFactory.getLogger(LiveDataService.class);
   private final String ohlcUpsertUrl =
-      "http://localhost:8080/api/stocks/{symbol}/ohlc/daily";
+      "http://project-data-provider-production-f081.up.railway.app/api/stocks/{symbol}/ohlc/daily";
 
 
   @Async("databaseWriteExecutor")

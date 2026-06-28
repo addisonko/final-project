@@ -1,6 +1,6 @@
 export const API = {
-  stockDataBase: "http://localhost:8080",
-  liveDataBase: "http://localhost:8081",
+  stockDataBase: "https://project-stock-data-production-8ee5.up.railway.app",
+  liveDataBase: "https://project-data-provider-production-f081.up.railway.app",
 };
 
 export const ENDPOINTS = {

@@ -56,7 +56,7 @@ public class LiveDataService {
   @Value("${live.quote.window-end:23:59}")
   private String windowEnd; // 4:00 PM
 
-  private final String stockAppURL = "http://localhost:8080/api/stocks/symbols";
+  private final String stockAppURL = "http://project-data-provider-production-f081.up.railway.app/api/stocks/symbols";
   private final Object finnhubRateLimitLock = new Object();
   private static final long finnhubMinIntervalMS = 1100;
   private static final org.slf4j.Logger log =
