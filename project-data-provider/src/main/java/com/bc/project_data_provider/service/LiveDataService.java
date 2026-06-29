@@ -3,7 +3,6 @@ package com.bc.project_data_provider.service;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.LocalTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -49,14 +48,11 @@ public class LiveDataService {
   @Value("${finnhub.api.token}")
   private String apiToken;
 
-  @Value("${live.quote.timezone:America/New_York}")
-  private String schedulerTimezone;
-  @Value("${live.quote.window-start:00:01}")
-  private String windowStart; // 9:30 AM
-  @Value("${live.quote.window-end:23:59}")
-  private String windowEnd; // 4:00 PM
   @Value("${stock-data.base-url}")
   private String stockDataBaseUrl;
+
+  @Value("${live.quote.timezone}")
+  private String schedulerTimezone;
 
 
   private final Object finnhubRateLimitLock = new Object();
@@ -66,31 +62,6 @@ public class LiveDataService {
   private final AtomicBoolean refreshInProgress = new AtomicBoolean(false);
   private static final String LAST_REFRESH_KEY = "quotes:lastRefreshedAt";
 
-
-  public void runRefreshLoopUntilWindowEnd() {
-    ZoneId zone = ZoneId.of(schedulerTimezone);
-    int pass = 0;
-
-    while (isInNightlyWindow(zone)) {
-      pass++;
-      log.info("Starting nightly refresh pass #{}", pass);
-      refreshAllQuotes();
-
-      if (!isInNightlyWindow(zone)) {
-        log.info("Nightly window closed — stopping after {} passes", pass);
-        break;
-      }
-      log.info("Pass #{} complete — waiting 6 hours before next pass", pass);
-      try {
-        Thread.sleep(Duration.ofHours(6));
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-        log.info("Pass interval interrupted — stopping loop after pass #{}",
-            pass);
-        break;
-      }
-    }
-  }
 
   public void refreshAllQuotes() {
     if (!refreshInProgress.compareAndSet(false, true)) {
@@ -237,7 +208,6 @@ public class LiveDataService {
   }
 
 
-
   // ! Private methods
   private FinnhubDto fetchFromFinnhub(String symbol)
       throws InterruptedException {
@@ -270,16 +240,4 @@ public class LiveDataService {
     }
     return dtoMapper.map(symbol, cached);
   }
-
-  public boolean isInNightlyWindow() {
-    return isInNightlyWindow(ZoneId.of(schedulerTimezone));
-  }
-
-  private boolean isInNightlyWindow(ZoneId zone) {
-    LocalTime now = LocalTime.now(zone);
-    LocalTime start = LocalTime.parse(windowStart); // "09:30"
-    LocalTime end = LocalTime.parse(windowEnd); // "16:00"
-    return !now.isBefore(start) && now.isBefore(end);
-  }
-
 }
