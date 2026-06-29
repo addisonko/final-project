@@ -263,34 +263,28 @@ function createNewsPlaceholder(message) {
 }
 
 function renderNewsCard(article) {
-  const card = document.createElement("article");
+  const hasUrl = Boolean(article.url?.trim());
+  const card = document.createElement(hasUrl ? "a" : "article");
   card.className = "news-card";
 
-  if (article.image?.trim()) {
-    const img = document.createElement("img");
-    img.className = "news-card__thumb";
-    img.src = article.image;
-    img.alt = "";
-    img.loading = "lazy";
-    img.onerror = () => img.remove();
-    card.appendChild(img);
+  if (hasUrl) {
+    card.href = article.url;
+    card.target = "_blank";
+    card.rel = "noopener noreferrer";
   }
 
   const body = document.createElement("div");
   body.className = "news-card__body";
 
-  if (article.url?.trim()) {
-    const headline = document.createElement("a");
-    headline.className = "news-card__headline";
-    headline.href = article.url;
-    headline.target = "_blank";
-    headline.rel = "noopener noreferrer";
-    headline.textContent = article.headline || "Read article";
-    body.appendChild(headline);
-  } else if (article.headline) {
+  if (article.headline) {
     const headline = document.createElement("span");
     headline.className = "news-card__headline";
     headline.textContent = article.headline;
+    body.appendChild(headline);
+  } else if (hasUrl) {
+    const headline = document.createElement("span");
+    headline.className = "news-card__headline";
+    headline.textContent = "Read article";
     body.appendChild(headline);
   }
 
@@ -344,7 +338,10 @@ async function loadCompanyNews(symbol) {
   }
 }
 
-async function setActiveSymbol(symbol, { statusEl, containerEl, quoteEl, priceEl, changeEl }) {
+async function setActiveSymbol(
+  symbol,
+  { statusEl, containerEl, quoteEl, priceEl, changeEl },
+) {
   activeSymbol = symbol;
   startLiveQuoteRefresh(symbol, quoteEl, priceEl, changeEl);
   loadCompanyNews(symbol);

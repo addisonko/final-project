@@ -703,26 +703,24 @@ body.chart-page {
 }
 
 .news-card {
-  display: flow-root;
+  /* display: flow-root;
   padding: 12px;
   border: 1px solid var(--border);
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.03);
-  transition: border-color 0.15s ease;
+  transition: border-color 0.15s ease; */
+  display: block;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  transition: border-color 0.15s ease, background 0.15s ease;
+  text-decoration: none;
 }
 
 .news-card:hover {
   border-color: var(--border-hover);
-}
-
-.news-card__thumb {
-  float: left;
-  width: 80px;
-  height: 80px;
-  object-fit: cover;
-  border-radius: 6px;
-  margin: 0 12px 8px 0;
-  background: var(--bg-label);
+  background: rgba(255, 255, 255, 0.05);
 }
 
 .news-card__body {
@@ -734,7 +732,7 @@ body.chart-page {
   font-size: 0.9rem;
   font-weight: 600;
   color: var(--text-primary);
-  text-decoration: none;
+  /* text-decoration: none; */
   line-height: 1.35;
   margin-bottom: 6px;
 }

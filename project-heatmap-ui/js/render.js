@@ -236,7 +236,7 @@ function createStockBlock(stockNode, blockRegistry, onStockOpenChart) {
   block.addEventListener("mouseleave", () => {
     stockTooltip.hide();
   });
-  block.addEventListener("dblclick", () => {
+  block.addEventListener("click", () => {
     stockTooltip.hide();
     onStockOpenChart?.(stock);
   });
