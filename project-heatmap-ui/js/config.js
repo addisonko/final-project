@@ -27,6 +27,9 @@ export const REFRESH_INTERVAL_MS = 60 * 1000;
 /** Years of OHLC history shown in the hover tooltip sparkline. */
 export const TOOLTIP_SPARKLINE_YEARS = 1;
 
+/** Max years of OHLC history seeded in the database (disables longer chart ranges). */
+export const MAX_OHLC_HISTORY_YEARS = 5;
+
 /**
  * Maps Finnhub industry strings to coarse GICS-style sectors.
  * Unmapped industries fall back to keyword matching, then "Other".

@@ -4,7 +4,7 @@ import {
   fetchStockProfile,
   fetchQuotesForSymbols,
 } from "./api.js";
-import { REFRESH_INTERVAL_MS } from "./config.js";
+import { MAX_OHLC_HISTORY_YEARS, REFRESH_INTERVAL_MS } from "./config.js";
 import { formatPrice, formatPercentChange } from "./grouping.js";
 
 let chart;
@@ -80,8 +80,24 @@ function setActiveRangeButton(rangeKey) {
   });
 }
 
+function isRangeAvailable(rangeKey) {
+  const option = RANGE_OPTIONS[rangeKey];
+  return option && option.backendYears <= MAX_OHLC_HISTORY_YEARS;
+}
+
+function initRangeButtons() {
+  document.querySelectorAll(".chart-page__range-btn").forEach((button) => {
+    const rangeKey = button.dataset.range;
+    if (!isRangeAvailable(rangeKey)) {
+      button.disabled = true;
+      button.title = `Only ${MAX_OHLC_HISTORY_YEARS} years of history available`;
+    }
+  });
+}
+
 async function loadRange(rangeKey, statusEl, containerEl) {
   if (!activeSymbol || !chart || !candleSeries) return;
+  if (!isRangeAvailable(rangeKey)) return;
 
   const rows = await getOhlcRows(activeSymbol, rangeKey);
 
@@ -216,7 +232,7 @@ function bindRangeControls(statusEl, containerEl) {
   document.querySelectorAll(".chart-page__range-btn").forEach((button) => {
     button.addEventListener("click", async () => {
       const rangeKey = button.dataset.range;
-      if (!rangeKey || rangeKey === activeRange) return;
+      if (!rangeKey || rangeKey === activeRange || button.disabled) return;
 
       try {
         await loadRange(rangeKey, statusEl, containerEl);
@@ -370,6 +386,7 @@ async function initChartPage() {
     chart = chartInstance;
     candleSeries = series;
 
+    initRangeButtons();
     bindRangeControls(statusEl, containerEl);
     await setActiveSymbol(symbol, {
       statusEl,

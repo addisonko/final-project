@@ -650,6 +650,17 @@ body.chart-page {
   border-color: var(--accent);
 }
 
+.chart-page__range-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.chart-page__range-btn:disabled:hover {
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-secondary);
+  border-color: var(--border);
+}
+
 .chart-page__news {
   flex: 0 0 360px;
   display: flex;
