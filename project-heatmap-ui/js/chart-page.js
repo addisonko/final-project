@@ -20,7 +20,7 @@ const RANGE_OPTIONS = {
   "10Y": { backendYears: 10 },
 };
 
-const DEFAULT_RANGE = "1Y";
+const DEFAULT_RANGE = "3M";
 
 let activeSymbol = "";
 let activeRange = DEFAULT_RANGE;
