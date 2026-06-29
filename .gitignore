@@ -6,7 +6,6 @@ __pycache__/
 dist/
 build/
 
-
 # Virtual environments
 bootcamp-env/
 
@@ -15,3 +14,8 @@ bootcamp-env/
 
 # VS Code
 .vscode/
+
+# Database dumps (local export only)
+*.sql
+stock_ohlc_data.sql
+stock_profiles.sql

@@ -55,8 +55,10 @@ public class LiveDataService {
   private String windowStart; // 9:30 AM
   @Value("${live.quote.window-end:23:59}")
   private String windowEnd; // 4:00 PM
+  @Value("${stock-data.base-url}")
+  private String stockDataBaseUrl;
 
-  private final String stockAppURL = "http://project-data-provider-production-f081.up.railway.app/api/stocks/symbols";
+
   private final Object finnhubRateLimitLock = new Object();
   private static final long finnhubMinIntervalMS = 1100;
   private static final org.slf4j.Logger log =
@@ -143,8 +145,12 @@ public class LiveDataService {
   // Get all symbols from 8080
   public List<String> getAllSymbolsFromStockDataApp() {
     try {
+      String url = UriComponentsBuilder.fromUriString(stockDataBaseUrl)
+          .path("/api/stocks/symbols") //
+          .build() //
+          .toUriString();
       StockSymbolResp[] symbolsArray =
-          restTemplate.getForObject(stockAppURL, StockSymbolResp[].class);
+          restTemplate.getForObject(url, StockSymbolResp[].class);
 
       if (symbolsArray != null) {
         return Arrays.stream(symbolsArray) //
@@ -174,11 +180,19 @@ public class LiveDataService {
   }
 
   public LastRefreshDTO getLastRefreshTime() {
-    LocalDateTime lastRefreshTime =
-        redisHelper.get(LAST_REFRESH_KEY, LocalDateTime.class);
-    return LastRefreshDTO.builder() //
-        .lastRefreshTime(lastRefreshTime) //
-        .build();
+    try {
+      LocalDateTime lastRefreshTime =
+          redisHelper.get(LAST_REFRESH_KEY, LocalDateTime.class);
+      return LastRefreshDTO.builder() //
+          .lastRefreshTime(lastRefreshTime) //
+          .build();
+    } catch (Exception e) {
+      log.warn("Failed to read last refresh time from Redis: {}",
+          e.getMessage());
+      return LastRefreshDTO.builder() //
+      .lastRefreshTime(null) //
+      .build();
+    }
   }
 
   public List<CompanyNewsDTO> fetchCompanyNews(String symbol) {

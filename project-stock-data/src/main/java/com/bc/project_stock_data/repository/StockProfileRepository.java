@@ -1,7 +1,9 @@
 package com.bc.project_stock_data.repository;
 
+import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 import com.bc.project_stock_data.entity.StockProfileEntity;
 
@@ -9,5 +11,8 @@ import com.bc.project_stock_data.entity.StockProfileEntity;
 public interface StockProfileRepository extends JpaRepository<StockProfileEntity, Long> {
 
   Optional<StockProfileEntity> findByStockEntity_Symbol(String symbol);
+
+  @Query("SELECT p FROM StockProfileEntity p JOIN FETCH p.stockEntity")
+  List<StockProfileEntity> findAllWithStock();
 
 }

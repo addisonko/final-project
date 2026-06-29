@@ -45,7 +45,7 @@ public class StockService {
   }
 
   public List<StockProfileDTO> getAllProfiles() {
-    return this.stockProfileRepository.findAll().stream()
+    return this.stockProfileRepository.findAllWithStock().stream()
         .map(e -> this.dtoMapper.toProfileDto(e)).toList();
   }
 
