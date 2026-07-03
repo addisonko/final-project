@@ -85,7 +85,7 @@ public class LiveDataService {
       log.info("Refreshed " + success + "/" + symbols.size() + " quotes in "
           + elapsed + "ms");
       if (success > 0) {
-        redisHelper.set(LAST_REFRESH_KEY, LocalDateTime.now(),
+        redisHelper.set(LAST_REFRESH_KEY, LocalDateTime.now(ZoneId.of(schedulerTimezone)),
             Duration.ofHours(12));
       }
     }

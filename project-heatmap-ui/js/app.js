@@ -40,6 +40,7 @@ function openStockChartPage(stock) {
 function formatSubtitle(updatedAt = null) {
   const time = updatedAt
     ? updatedAt.toLocaleString([], {
+      timeZone: "America/New_York",
         month: "numeric",
         day: "numeric",
         year: "numeric",
