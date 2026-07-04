@@ -99,7 +99,7 @@ public class LiveDataService {
         log.warn("No quote data returned for" + " " + symbol);
         return false;
       }
-      redisHelper.set(symbolKey(symbol), quote, Duration.ofHours(12));
+      redisHelper.set(symbolKey(symbol), quote, Duration.ofDays(3));
       this.asyncOhlcPersistenceService.persistDailyOhlcAsync(symbol, quote);
       return true;
     } catch (InterruptedException e) {
