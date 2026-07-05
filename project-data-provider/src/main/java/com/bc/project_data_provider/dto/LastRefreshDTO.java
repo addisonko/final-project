@@ -1,6 +1,6 @@
 package com.bc.project_data_provider.dto;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -11,6 +11,6 @@ import lombok.NoArgsConstructor;
 @Getter
 @Builder
 public class LastRefreshDTO {
-  private LocalDateTime lastRefreshTime;
+  private Instant lastRefreshTime;
   
 }

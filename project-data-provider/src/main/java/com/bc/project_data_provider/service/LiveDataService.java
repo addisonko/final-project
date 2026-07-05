@@ -1,8 +1,8 @@
 package com.bc.project_data_provider.service;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -85,8 +85,8 @@ public class LiveDataService {
       log.info("Refreshed " + success + "/" + symbols.size() + " quotes in "
           + elapsed + "ms");
       if (success > 0) {
-        redisHelper.set(LAST_REFRESH_KEY, LocalDateTime.now(ZoneId.of(schedulerTimezone)),
-            Duration.ofHours(12));
+        redisHelper.set(LAST_REFRESH_KEY, Instant.now(),
+            Duration.ofDays(3));
       }
     }
   }
@@ -152,8 +152,8 @@ public class LiveDataService {
 
   public LastRefreshDTO getLastRefreshTime() {
     try {
-      LocalDateTime lastRefreshTime =
-          redisHelper.get(LAST_REFRESH_KEY, LocalDateTime.class);
+      Instant lastRefreshTime =
+          redisHelper.get(LAST_REFRESH_KEY, Instant.class);
       return LastRefreshDTO.builder() //
           .lastRefreshTime(lastRefreshTime) //
           .build();

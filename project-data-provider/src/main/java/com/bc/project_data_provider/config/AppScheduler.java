@@ -14,7 +14,7 @@ public class AppScheduler {
 
   private static final Logger log = LoggerFactory.getLogger(AppScheduler.class);
 
-  @Scheduled(cron = "0 30 09 * * MON-SAT",
+  @Scheduled(cron = "0 30 09 * * MON-SUN",
       zone = "${live.quote.timezone:America/New_York}")
   public void marketOpenRefresh() {
     liveDataService.refreshAllQuotes();
